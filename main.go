@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 
 	"google.golang.org/appengine" // Required external App Engine library
@@ -16,7 +16,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, "Hello, Gopher Network!")
+	//fmt.Fprintln(w, "Hello, Google Api Engine!")
 }
 
 func main() {
