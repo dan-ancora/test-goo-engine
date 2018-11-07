@@ -1,10 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/dan-ancora/apiteamamerica"
+	"github.com/ViajerosAdoquier/teamamerica"
+	//"github.com/dan-ancora/prototeamamerica"
 	"google.golang.org/appengine" // Required external App Engine library
 	"net/http"
+	"strings"
+)
+
+var (
+	clientTeamAmerica = teamamerica.New("XMLSMAY", "M3WgnuOV", "https://javatest.teamamericany.com:8443/TADoclit/services/TADoclit")
 )
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,35 +27,247 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getCitiesList(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Start testing Team America Package")
 
-	taClient := &apiteamamerica.Taclient{
-		Username: "darkcomputer",
-		Password: "12345",
-		URL:      "https://javatest.teamamericany.com:8443/TADoclit/services/TADoclit?wsdl"}
-	//URL: "http://82.77.142.41:9999/ancoraerp/index.jsp"}
-
-	/*
-		ok, err := taClient.Connect()
-		if err != nil {
-			fmt.Println("Error connecting to url: ", taClient.URL)
-		} else {
-			fmt.Println("Response: ", ok)
-		}
-	*/
-
-	response, err := taClient.ListCities(r)
-	if err != nil {
-		fmt.Println(err)
+	response, mesaj, err := clientTeamAmerica.ListCities(r)
+	if err != nil || response == nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s<hr>%s", err, mesaj)))
 	} else {
-		w.Write(response)
+
+		//return result: for testing just print cities as html table
+		var xhtml bytes.Buffer
+
+		xhtml.WriteString(`
+		<html>
+			<body>
+					<div style="height: 70%; overflow-y: auto">		   
+						<table>
+							<tr>
+								<th>City Code</th>
+								<th>City Name<br><i><small>show Hotels</small></i></th>
+								<th>Country</th>
+								<th>Display Group</th>
+							</tr>
+			`)
+
+		for _, v := range response.Cities {
+			xhtml.WriteString(fmt.Sprintf(`
+							<tr>
+								<td>%s</td>
+								<td><a href="/vendor_list/%s">%s</a></td>
+								<td>%s</td>
+								<td>%s</td>
+							</tr>
+				`,
+				v.GetCode(),
+				v.GetCode(), v.GetName(),
+				v.GetCountry(),
+				v.GetDisplaygroup()))
+		}
+
+		xhtml.WriteString(`
+						</table>
+					</div>
+
+					<h3><a href="/">Back to Home</a></h3>
+				</body>
+			</html>
+			`)
+
+		xhtml.WriteString(mesaj)
+		w.Write([]byte(xhtml.String()))
+	}
+}
+
+func getVendorListCity(w http.ResponseWriter, r *http.Request) {
+
+	cale := strings.Split(r.RequestURI, "/")
+	if len(cale) < 3 {
+		w.Write([]byte("Missing parameters"))
+		return
 	}
 
+	//w.Write([]byte(cale[2] + "/" + cale[3]))
+
+	response, mesaj, err := clientTeamAmerica.ListVendor(r, cale[2], "Hotel")
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, mesaj)))
+	} else {
+		//return result: for testing just print vendors as html table
+		var xhtml bytes.Buffer
+
+		xhtml.WriteString(fmt.Sprintf(`
+		<html>
+		<body>
+			<h2>HOTELS</h2>
+			<table>
+			<tr>
+				<th>Vendor ID</th>
+				<th>Vendor Name</th>
+				<th>City</th>
+			</tr>
+				`))
+
+		for _, v := range response.Vendors {
+			xhtml.WriteString(fmt.Sprintf(`
+			<tr>
+				<td>%v
+				<td><a href="/product_info_v2/%v">%s</a>
+				<td>%v
+			</tr>`,
+				v.GetId(), v.GetId(), v.GetName(), v.GetCity()))
+		}
+
+		xhtml.WriteString(`
+			</table>
+		</body>
+		</html>
+				`)
+		w.Write([]byte(xhtml.String()))
+	}
+
+	response, mesaj, err = clientTeamAmerica.ListVendor(r, cale[2], "Service")
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, mesaj)))
+	} else {
+		//return result: for testing just print vendors as html table
+		var xhtml bytes.Buffer
+
+		xhtml.WriteString(fmt.Sprintf(`
+		<html>
+		<body>
+			<h2>SERVICES</h2>
+			<table>
+			<tr>
+				<th>Vendor ID</th>
+				<th>Vendor Name</th>
+				<th>City</th>
+			</tr>
+				`))
+
+		for _, v := range response.Vendors {
+			xhtml.WriteString(fmt.Sprintf(`
+			<tr>
+				<td>%v
+				<td>%s
+				<td>%v
+			</tr>`,
+				v.GetId(), v.GetName(), v.GetCity()))
+		}
+
+		xhtml.WriteString(`
+			</table>
+		</body>
+		</html>
+				`)
+		w.Write([]byte(xhtml.String()))
+	}
+
+	xhtml, err2 := clientTeamAmerica.ListPickUpLocations(r, cale[2])
+	if err2 != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err2, xhtml)))
+	} else {
+		w.Write([]byte(xhtml))
+	}
+}
+
+func getRoomType(w http.ResponseWriter, r *http.Request) {
+	response, err := clientTeamAmerica.ListRoomType(r)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
+}
+
+func getMealPlan(w http.ResponseWriter, r *http.Request) {
+	response, err := clientTeamAmerica.ListMealPlan(r)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
+}
+
+func getProductInfoV2(w http.ResponseWriter, r *http.Request) {
+
+	cale := strings.Split(r.RequestURI, "/")
+	if len(cale) < 2 {
+		w.Write([]byte("Missing parameters"))
+		return
+	}
+
+	response, err := clientTeamAmerica.ProductInfov2(r, "", cale[2])
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
+}
+
+func getPriceSearch(w http.ResponseWriter, r *http.Request) {
+
+	params := []byte(`
+	{  
+		"checkin":{
+	   
+		   "day":22,
+		   "month":11,
+		   "year":2018
+		},
+		"checkout":{
+	   
+		   "day":23,
+		   "month":11,
+		   "year":2018
+		},
+		"rooms":[  
+		   {  
+			  "adults":2
+		   }
+		],
+		"lang":"es",
+		"hotels":[  
+		   {  
+			  "id":3,
+			  "provider_code":"15975"
+		   },
+		   {  
+			  "id":3,
+			  "provider_code":"14700"
+		   }
+		],
+		"site":"totembo"
+	 }
+	`)
+
+	cale := strings.Split(r.RequestURI, "/")
+	if len(cale) < 2 {
+		w.Write([]byte("Missing parameters"))
+		return
+	}
+
+	response, err := clientTeamAmerica.PriceSearch(r, params)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
 }
 
 func main() {
 	http.HandleFunc("/city_list", getCitiesList)
 
+	http.HandleFunc("/vendor_list/", getVendorListCity)
+
+	http.HandleFunc("/room_type", getRoomType)
+
+	http.HandleFunc("/meal_plan", getMealPlan)
+
+	http.HandleFunc("/product_info_v2/", getProductInfoV2)
+
+	http.HandleFunc("/search_price/test", getPriceSearch)
+
 	http.HandleFunc("/", indexHandler)
+
 	appengine.Main() // Starts the server to receive requests
 }
