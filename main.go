@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/ViajerosAdoquier/teamamerica"
+
 	//"github.com/dan-ancora/prototeamamerica"
-	"google.golang.org/appengine" // Required external App Engine library
 	"net/http"
 	"strings"
+
+	"google.golang.org/appengine" // Required external App Engine library
 )
 
 var (
@@ -254,6 +257,42 @@ func getPriceSearch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getBooking(w http.ResponseWriter, r *http.Request) {
+
+	params := []byte(``)
+
+	cale := strings.Split(r.RequestURI, "/")
+	if len(cale) < 2 {
+		w.Write([]byte("Missing parameters"))
+		return
+	}
+
+	response, err := clientTeamAmerica.Booking(r, params)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
+}
+
+func getTours(w http.ResponseWriter, r *http.Request) {
+
+	params := []byte(``)
+
+	cale := strings.Split(r.RequestURI, "/")
+	if len(cale) < 2 {
+		w.Write([]byte("Missing parameters"))
+		return
+	}
+
+	response, err := clientTeamAmerica.TourSearch(r, params)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s\n%s", err, response)))
+	} else {
+		w.Write([]byte(response))
+	}
+}
+
 func main() {
 	http.HandleFunc("/city_list", getCitiesList)
 
@@ -266,6 +305,10 @@ func main() {
 	http.HandleFunc("/product_info_v2/", getProductInfoV2)
 
 	http.HandleFunc("/search_price/test", getPriceSearch)
+
+	http.HandleFunc("/booking", getBooking)
+
+	http.HandleFunc("/toursearch", getTours)
 
 	http.HandleFunc("/", indexHandler)
 
